@@ -75,6 +75,17 @@ for _k, _v in [("tenders", []), ("chat_history", {}), ("pinecone_dim", 768)]:
 # ══════════════════════════════════════════════════════════════════════════════
 # AI — HuggingFace Mistral-7B-Instruct
 # ══════════════════════════════════════════════════════════════════════════════
+def _rag_fallback(question, context):
+    keywords = [w for w in question.lower().split() if len(w) > 3]
+    hits = [
+        line.strip()
+        for line in context.split("\n")
+        if any(k in line.lower() for k in keywords) and len(line.strip()) > 20
+    ]
+    if hits:
+        return "**Based on the document:**\n\n" + "\n\n".join(hits[:6])
+    return "Sorry, I couldn't find relevant information for that question in this document."
+
 def ask_hf(question, context):
     hf_key = _secret("HUGGINGFACE_API_KEY")
 
