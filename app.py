@@ -76,59 +76,51 @@ for _k, _v in [("tenders", []), ("chat_history", {}), ("pinecone_dim", 768)]:
 # AI — HuggingFace Mistral-7B-Instruct
 # ══════════════════════════════════════════════════════════════════════════════
 def _rag_fallback(question, context):
-    keywords = [w for w in question.lower().split() if len(w) > 3]
+    # Remove common useless words
+    stopwords = {"what", "is", "the", "are", "for", "and", "with", "from", "this"}
+    keywords = [w for w in question.lower().split() if len(w) > 3 and w not in stopwords]
 
     lines = context.split("\n")
     scored = []
 
     for line in lines:
         line_clean = line.strip()
-        if len(line_clean) < 20:
+        if len(line_clean) < 25:
             continue
 
-        score = sum(1 for k in keywords if k in line_clean.lower())
+        line_lower = line_clean.lower()
 
-        # Boost lines with important tender terms
-        if any(word in line_clean.lower() for word in ["emd", "deadline", "eligibility", "scope", "cost"]):
-            score += 2
+        # Keyword score
+        score = sum(2 for k in keywords if k in line_lower)
+
+        # Boost important tender terms
+        if any(word in line_lower for word in ["emd", "deadline", "eligibility", "scope", "cost", "bid", "tender"]):
+            score += 3
+
+        # Exact question match boost
+        if question.lower() in line_lower:
+            score += 5
 
         if score > 0:
             scored.append((score, line_clean))
 
-    # Sort by relevance
+    # Sort best matches
     scored.sort(key=lambda x: x[0], reverse=True)
 
     if scored:
-        best_lines = [line for _, line in scored[:5]]
+        best_lines = [line for _, line in scored[:4]]
 
         return (
-            "**Answer (extracted from document):**\n\n"
-            + "\n\n".join(best_lines)
+            "**Answer (from document analysis):**\n\n"
+            + "\n\n".join(f"• {line}" for line in best_lines)
         )
 
     return "Not found in document."
 
+
 def ask_hf(question, context):
-    hf_key = _secret("HUGGINGFACE_API_KEY")
-
-    if not hf_key:
-        return _rag_fallback(question, context)
-
-    try:
-        client = InferenceClient(
-            model="google/flan-t5-large",
-            token=hf_key,
-        )
-
-        response = client.text_generation(
-            f"Answer based on context:\n\nContext:\n{context[:2000]}\n\nQuestion:\n{question}",
-            max_new_tokens=300,
-        )
-        return response
-
-    except Exception as e:
-        return f"⚠️ HuggingFace error: {e}\n\n{_rag_fallback(question, context)}"
-
+    # 🔒 Stable mode (NO HuggingFace dependency)
+    return _rag_fallback(question, context)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PINECONE
