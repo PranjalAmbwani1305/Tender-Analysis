@@ -108,13 +108,18 @@ def ask_hf(question, context):
             f"QUESTION:\n{question} [/INST]"
         )
         response = client.chat_completion(
-    messages=[
-        {"role": "system", "content": "You are an expert AI assistant for Indian government tenders. Answer only from the document."},
-        {"role": "user", "content": f"Context:\n{context[:4000]}\n\nQuestion:\n{question}"}
-    ],
-    max_tokens=512,
-    temperature=0.3,
-),
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert AI assistant for Indian government tenders. Answer ONLY from the document. If not found, say 'Not found in document.'"
+                },
+                {
+                    "role": "user",
+                    "content": f"Context:\n{context[:4000]}\n\nQuestion:\n{question}"
+                }
+            ],
+            max_tokens=512,
+            temperature=0.3,
         )
         return response.strip()
     except Exception as e:
