@@ -94,7 +94,7 @@ def ask_hf(question, context):
 
     try:
         client = InferenceClient(
-            model=model="meta-llama/Meta-Llama-3-8B-Instruct",
+            model="google/flan-t5-large",
             token=hf_key,
         )
 
