@@ -1,0 +1,52 @@
+# k8s/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: atgda-service
+  namespace: default
+  labels:
+    app: atgda
+spec:
+  selector:
+    app: atgda
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8501
+  type: ClusterIP
+
+---
+# k8s/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: atgda-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: atgda.yourdomain.com     # ← change this
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: atgda-service
+                port:
+                  number: 80
+
+---
+# k8s/pvc.yaml — Persistent storage for uploaded files
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: atgda-uploads-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,0 +1,66 @@
+# k8s/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: atgda
+  namespace: default
+  labels:
+    app: atgda
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: atgda
+  template:
+    metadata:
+      labels:
+        app: atgda
+    spec:
+      containers:
+        - name: atgda
+          image: atgda:latest          # replace with your registry: e.g. gcr.io/myproject/atgda:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8501
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: atgda-secrets
+                  key: ANTHROPIC_API_KEY
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: atgda-secrets
+                  key: PINECONE_API_KEY
+            - name: PINECONE_INDEX
+              valueFrom:
+                secretKeyRef:
+                  name: atgda-secrets
+                  key: PINECONE_INDEX
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: atgda-uploads-pvc

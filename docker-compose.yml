@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  atgda:
+    build: .
+    image: atgda:latest
+    container_name: atgda-app
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_INDEX=${PINECONE_INDEX:-atgda-tenders}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - ./uploads:/app/uploads   # optional: persist uploaded files
