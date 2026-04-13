@@ -98,22 +98,11 @@ def ask_hf(question, context):
             token=hf_key,
         )
 
-        response = client.chat_completion(
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an expert AI assistant for Indian government tenders. Answer ONLY from the document. If not found, say 'Not found in document.'"
-                },
-                {
-                    "role": "user",
-                    "content": f"Context:\n{context[:4000]}\n\nQuestion:\n{question}"
-                }
-            ],
-            max_tokens=512,
-            temperature=0.3,
+        response = client.text_generation(
+            f"Answer based on context:\n\nContext:\n{context[:2000]}\n\nQuestion:\n{question}",
+            max_new_tokens=300,
         )
-
-        return response.choices[0].message["content"]
+        return response
 
     except Exception as e:
         return f"⚠️ HuggingFace error: {e}\n\n{_rag_fallback(question, context)}"
