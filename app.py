@@ -75,38 +75,18 @@ for _k, _v in [("tenders", []), ("chat_history", {}), ("pinecone_dim", 768)]:
 # ══════════════════════════════════════════════════════════════════════════════
 # AI — HuggingFace Mistral-7B-Instruct
 # ══════════════════════════════════════════════════════════════════════════════
-def _rag_fallback(question, context):
-    """Keyword search fallback — used when HF key is absent or call fails."""
-    keywords = [w for w in question.lower().split() if len(w) > 3]
-    hits = [
-        line.strip()
-        for line in context.split("\n")
-        if any(k in line.lower() for k in keywords) and len(line.strip()) > 20
-    ]
-    if hits:
-        return "**Based on the document:**\n\n" + "\n\n".join(hits[:6])
-    return "Sorry, I couldn't find relevant information for that question in this document."
-
-
 def ask_hf(question, context):
-    """Query Mistral-7B via HuggingFace Inference API.
-    The API key is fetched from st.secrets at call-time — never hardcoded."""
     hf_key = _secret("HUGGINGFACE_API_KEY")
+
     if not hf_key:
         return _rag_fallback(question, context)
+
     try:
         client = InferenceClient(
-            model="mistralai/Mistral-7B-Instruct-v0.2",
+            model="HuggingFaceH4/zephyr-7b-beta",
             token=hf_key,
         )
-        prompt = (
-            "<s>[INST] You are an expert AI assistant for Indian government tenders.\n"
-            "Answer ONLY from the given tender document.\n"
-            "Be concise and structured.\n"
-            "If the answer is not present, say: 'Not found in document.'\n\n"
-            f"TENDER DOCUMENT:\n{context[:4000]}\n\n"
-            f"QUESTION:\n{question} [/INST]"
-        )
+
         response = client.chat_completion(
             messages=[
                 {
@@ -121,7 +101,9 @@ def ask_hf(question, context):
             max_tokens=512,
             temperature=0.3,
         )
-        return response.strip()
+
+        return response.choices[0].message["content"]
+
     except Exception as e:
         return f"⚠️ HuggingFace error: {e}\n\n{_rag_fallback(question, context)}"
 
