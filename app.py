@@ -107,11 +107,14 @@ def ask_hf(question, context):
             f"TENDER DOCUMENT:\n{context[:4000]}\n\n"
             f"QUESTION:\n{question} [/INST]"
         )
-        response = client.text_generation(
-            prompt,
-            max_new_tokens=512,
-            temperature=0.3,
-            repetition_penalty=1.1,
+        response = client.chat_completion(
+    messages=[
+        {"role": "system", "content": "You are an expert AI assistant for Indian government tenders. Answer only from the document."},
+        {"role": "user", "content": f"Context:\n{context[:4000]}\n\nQuestion:\n{question}"}
+    ],
+    max_tokens=512,
+    temperature=0.3,
+),
         )
         return response.strip()
     except Exception as e:
