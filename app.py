@@ -6,6 +6,7 @@ import time
 import math
 import hashlib
 from datetime import datetime
+from huggingface_hub import InferenceClient
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -55,7 +56,7 @@ PINECONE_API_KEY  = _secret("PINECONE_API_KEY")
 PINECONE_INDEX    = _secret("PINECONE_INDEX", "tender")
 PINECONE_ENV      = _secret("PINECONE_ENV",   "us-east-1")
 PINECONE_CLOUD    = _secret("PINECONE_CLOUD", "aws")
-
+HUGGINGFACE_API_KEY = _secret("HUGGINGFACE_API_KEY")
 # ── Session state ─────────────────────────────────────────────────────────────
 for _k, _v in [("tenders", []), ("chat_history", {}), ("pinecone_dim", 768)]:
     if _k not in st.session_state:
@@ -164,33 +165,44 @@ def search_pinecone(query, top_k=5):
 # ══════════════════════════════════════════════════════════════════════════════
 # ANTHROPIC
 # ══════════════════════════════════════════════════════════════════════════════
-def ask_claude(question, context):
-    if not ANTHROPIC_API_KEY:
+from huggingface_hub import InferenceClient
+
+def ask_hf(question, context):
+    HF_API_KEY = _secret("HUGGINGFACE_API_KEY")
+
+    if not HF_API_KEY:
         return _rag_fallback(question, context)
+
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=1024,
-            system=(
-                "You are ATGDA, an expert AI assistant for Indian government tender documents. "
-                "Answer ONLY from the provided tender text. Be concise and structured. "
-                "Format amounts in Indian notation (Rs X,XX,XXX). "
-                "If information is not in the text, say so clearly."
-            ),
-            messages=[{"role": "user", "content": f"TENDER DOCUMENT:\n{context[:6000]}\n\n---\nQuestion: {question}"}],
+        client = InferenceClient(
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            token=HF_API_KEY
         )
-        return resp.content[0].text
+
+        prompt = f"""
+You are an expert AI assistant for Indian government tenders.
+
+Answer ONLY from the given tender document.
+Be concise and structured.
+If answer not present, say clearly.
+
+TENDER DOCUMENT:
+{context[:4000]}
+
+QUESTION:
+{question}
+"""
+
+        response = client.text_generation(
+            prompt,
+            max_new_tokens=512,
+            temperature=0.3
+        )
+
+        return response.strip()
+
     except Exception as e:
-        return f"Claude error: {e}\n\n{_rag_fallback(question, context)}"
-
-def _rag_fallback(question, text):
-    kws = [w for w in question.lower().split() if len(w) > 3]
-    lines = text.split("\n")
-    scored = sorted(lines, key=lambda l: sum(k in l.lower() for k in kws), reverse=True)
-    return f"**[Keyword fallback — no API key]**\n\n" + "\n".join(scored[:6])
-
+        return f"HuggingFace error: {e}\n\n{_rag_fallback(question, context)}"
 # ══════════════════════════════════════════════════════════════════════════════
 # NER
 # ══════════════════════════════════════════════════════════════════════════════
