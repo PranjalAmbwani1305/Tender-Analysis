@@ -57,7 +57,7 @@ PINECONE_ENV      = _secret("PINECONE_ENV",   "us-east-1")
 PINECONE_CLOUD    = _secret("PINECONE_CLOUD", "aws")
 
 # ── Session state ─────────────────────────────────────────────────────────────
-for _k, _v in [("tenders", []), ("chat_history", {}), ("pinecone_dim", 1536)]:
+for _k, _v in [("tenders", []), ("chat_history", {}), ("pinecone_dim", 728]:
     if _k not in st.session_state:
         st.session_state[_k] = _v
 
