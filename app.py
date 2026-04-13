@@ -77,14 +77,22 @@ for _k, _v in [("tenders", []), ("chat_history", {}), ("pinecone_dim", 768)]:
 # ══════════════════════════════════════════════════════════════════════════════
 def _rag_fallback(question, context):
     keywords = [w for w in question.lower().split() if len(w) > 3]
-    hits = [
-        line.strip()
-        for line in context.split("\n")
-        if any(k in line.lower() for k in keywords) and len(line.strip()) > 20
-    ]
-    if hits:
-        return "**Based on the document:**\n\n" + "\n\n".join(hits[:6])
-    return "Sorry, I couldn't find relevant information for that question in this document."
+
+    lines = context.split("\n")
+    scored = []
+
+    for line in lines:
+        score = sum(1 for k in keywords if k in line.lower())
+        if score > 0 and len(line.strip()) > 20:
+            scored.append((score, line.strip()))
+
+    scored.sort(reverse=True)
+
+    if scored:
+        best = [line for _, line in scored[:5]]
+        return "**Answer (from document):**\n\n" + "\n\n".join(best)
+
+    return "Not found in document."
 
 def ask_hf(question, context):
     hf_key = _secret("HUGGINGFACE_API_KEY")
