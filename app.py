@@ -82,15 +82,29 @@ def _rag_fallback(question, context):
     scored = []
 
     for line in lines:
-        score = sum(1 for k in keywords if k in line.lower())
-        if score > 0 and len(line.strip()) > 20:
-            scored.append((score, line.strip()))
+        line_clean = line.strip()
+        if len(line_clean) < 20:
+            continue
 
-    scored.sort(reverse=True)
+        score = sum(1 for k in keywords if k in line_clean.lower())
+
+        # Boost lines with important tender terms
+        if any(word in line_clean.lower() for word in ["emd", "deadline", "eligibility", "scope", "cost"]):
+            score += 2
+
+        if score > 0:
+            scored.append((score, line_clean))
+
+    # Sort by relevance
+    scored.sort(key=lambda x: x[0], reverse=True)
 
     if scored:
-        best = [line for _, line in scored[:5]]
-        return "**Answer (from document):**\n\n" + "\n\n".join(best)
+        best_lines = [line for _, line in scored[:5]]
+
+        return (
+            "**Answer (extracted from document):**\n\n"
+            + "\n\n".join(best_lines)
+        )
 
     return "Not found in document."
 
